@@ -7,8 +7,24 @@
 () {
     local term_id type message notifier
 
+    # Take seconds as first argument and format it as Xs, XX:XX or XX:XX:XX
+    format-time() {
+      t="$1"
+
+      if [[ "$t" -lt 60 ]]; then
+        format="%ss"
+      elif [[ "$t" -lt 3600 ]]; then
+        format="%M:%S"
+      else
+        format="%H:%M:%S"
+      fi
+
+      zmodload -e zsh/datetime || zmodload zsh/datetime
+        TZ=UTC strftime "$format" "$t"
+    }
+
     type=$1
-    time_elapsed="$2"
+    time_elapsed=$(format-time "$2")
     message=$(<&0)
 
     # Find a "term_id", a string that will be used later to dispatch different
