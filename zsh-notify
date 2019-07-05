@@ -1,14 +1,16 @@
 # vim: set nowrap filetype=zsh:
 #
-# notify-if-background will exit with status 1 if the terminal application is
-# not one for which we know how to query the "frontmost/background" status, and
-# with status 2 if the terminal application or the current shell tab/window is
-# active. See README.md for configuration options.
+# zsh-notify sends the "command complete" notification using stdin as the message.
+# The first argument is used to select between two possible templates for the
+# notification title and must be one of "success" or "error", the second argument
+# is the time the command took to complete, in seconds.
 () {
     local type message notifier
 
-    # Take seconds as first argument and format it as Xs, XX:XX or XX:XX:XX
-    format-time() {
+    # format-time takes a number of seconds as first argument and format it
+    # as Xs, XX:XX or XX:XX:XX
+    function format-time() {
+      local format t
       t="$1"
 
       if [[ "$t" -lt 60 ]]; then
@@ -20,45 +22,45 @@
       fi
 
       zmodload -e zsh/datetime || zmodload zsh/datetime
-        TZ=UTC strftime "$format" "$t"
+      TZ=UTC strftime "$format" "$t"
     }
 
-    type=$1
+    type="$1"
     time_elapsed=$(format-time "$2")
     message=$(<&0)
 
     function notifier {
         local notification_title message type
         local -A titles
-        local -A vars
 
+        type="$1"
+        time_elapsed="$2"
         titles=(error "#fail" success "#win")
-        type=$1
-        time_elapsed=$2
+        local -A vars
         vars=(time_elapsed "$time_elapsed")
 
         message=$(<&0)
 
-        function replace_vars {
-          local text
-
-          text="$1"
-
-          for k in "${(@k)vars}"; do
-            v=$vars[$k]
-            text=$(echo "$text" | sed "s/#{$k}/$v/" )
-          done
-
-          echo $text
-        }
-
         zstyle -s ':notify:' "$type"-title notification_title \
             || notification_title="$titles[$type]"
 
-        notification_title=$(replace_vars "$notification_title")
-
         zstyle -s ':notify:' "$type"-sound notification_sound
         zstyle -s ':notify:' "$type"-icon icon
+
+        function replace-vars {
+          local text v
+
+          text=$(<&0)
+
+          for k in "${(@k)vars}"; do
+            v=$vars[$k]
+            text=$(sed "s/#{$k}/$v/" <<< "$text")
+          done
+
+          echo "$text"
+        }
+
+        notification_title=$(replace-vars <<< "$notification_title")
 
         function notifier-mac {
             local app_id app_id_option sound_option
@@ -77,10 +79,13 @@
                 sound_option="-sound $notification_sound"
             fi
 
-            echo "$message" | terminal-notifier ${=app_id_option} ${=sound_option} -appIcon "$icon" -title "$notification_title" > /dev/null 2>&1
+            terminal-notifier ${=app_id_option} \
+              ${=sound_option} \
+              -appIcon "$icon" \
+              -title "$notification_title" <<< "$message" > /dev/null 2>&1
 
             if zstyle -t ':notify:' activate-terminal; then
-                echo tell app id \"$app_id\" to activate | osascript 1>/dev/null
+                osascript <<< "tell app id \"$app_id\" to activate" 1>/dev/null
             fi
         }
 
@@ -131,13 +136,8 @@
         fi
     }
 
-    zstyle -s ':notify:' error-log error_log \
-      || error_log=/dev/stderr
-    (
-      zstyle -s ':notify:' notifier notifier \
-          || notifier=notifier
+    zstyle -s ':notify:' notifier notifier || notifier=notifier
 
-      echo "$message" | "$notifier" "$type" "$time_elapsed"
-    ) 2> "$error_log"
+    "$notifier" "$type" "$time_elapsed" <<< "$message" 
 
 } "$1" "$2"
