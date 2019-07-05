@@ -15,7 +15,8 @@ zstyle ':notify:*' parent-pid $_ZSH_NOTIFY_ROOT_PPID
 function notify-error {
     local time_elapsed 
     time_elapsed=$1
-    notify-if-background error "$time_elapsed" < /dev/stdin &!
+
+    if-background && notify error "$time_elapsed" < /dev/stdin &!
 }
 
 # Notify of successful command termination, but only if it took at least
@@ -29,7 +30,7 @@ function notify-success() {
         || command_complete_timeout=30
 
     if (( $time_elapsed > $command_complete_timeout )); then
-        notify-if-background success "$time_elapsed" < /dev/stdin &!
+        if-background && notify success "$time_elapsed" < /dev/stdin &!
     fi
 }
 
@@ -57,6 +58,7 @@ function store-command-stats() {
 }
 
 autoload add-zsh-hook
-autoload -U notify-if-background
+autoload -U notify
+autoload -U if-background
 add-zsh-hook preexec store-command-stats
 add-zsh-hook precmd notify-command-complete

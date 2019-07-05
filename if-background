@@ -1,0 +1,126 @@
+# vim: set nowrap filetype=zsh:
+() {
+    local term_id
+    
+    # Find a "term_id", a string that will be used later to dispatch different
+    # commands to determine whether the terminal application is active or in
+    # background.
+    function find-current-term-id {
+        local resources_dir
+        zstyle -s ':notify:' resources-dir resources_dir
+
+        if [[ "$TERM_PROGRAM" == 'iTerm.app' ]]; then
+            echo iterm2
+        elif [[ "$TERM_PROGRAM" == 'Apple_Terminal' ]]; then
+            echo apple-terminal
+        elif [[ "$DISPLAY" != '' ]] && which xdotool > /dev/null 2>&1; then
+            echo xdotool
+        else
+            return 1
+        fi
+    }
+
+    # Exit with 0 if inside a TMUX pane
+    function is-inside-tmux {
+        if [[ -z "$TMUX" ]]; then
+            return 1
+        else
+            return 0
+        fi
+    }
+
+    # Find the TTY for the current shell.
+    function find-current-tty {
+        if is-inside-tmux; then
+          tmux display-message -p '#{client_tty}'
+        else
+          echo $TTY
+        fi
+    }
+
+    # Get the active TMUX pane ID, comparable with $TMUX_PANE
+    function find-tmux-pane {
+        if is-inside-tmux; then
+            tmux list-windows -F '#{window_active} #{pane_id}' | grep -i '^1' | awk '{ print $2 }'
+        else
+            return 1
+        fi
+    }
+
+    # Exit with 0 if given TMUX pane is the active one.
+    function is-tmux-pane-active {
+        local pane
+        pane=$1
+
+        if [[ "$TMUX_PANE" == "$pane" ]]; then
+            return 0
+        fi
+
+        return 1
+    }
+
+    # Exit with 0 if the terminal window/tab is active; exit with 1 if not, or
+    # if the terminal is
+    function is-terminal-window-active {
+        local term_id
+
+        term_id=$1
+
+        case "$term_id" in
+            "iterm2"|"apple-terminal")
+                local current_tty resources_dir
+
+                zstyle -s ':notify:' resources-dir resources_dir
+                current_tty=$(find-current-tty)
+
+                if [[ "true" == $(osascript "$resources_dir"/is-"$term_id"-active.applescript "$current_tty") ]]; then
+                    return 0
+                fi
+            ;;
+            "xdotool")
+                local active_wid wid
+
+                active_wid=$(xdotool getactivewindow)
+
+                zstyle -s ':notify:' window-pid wid \
+                    || zstyle -s ':notify:' parent-pid wid
+  
+                if [[ "$active_wid" == "$wid" ]]; then
+                    return 0
+                fi
+            ;;
+        esac
+        return 1
+    }
+
+    # Detect if the terminal application is in background, also accounting
+    # for TMUX if needed, exiting with status 1 if it's active.
+    function is-in-background {
+        local term_id
+
+        term_id=$1
+
+        if is-terminal-window-active "$term_id"; then
+            if is-inside-tmux; then
+                local tmux_pane
+
+                tmux_pane=$(find-tmux-pane)
+
+                if is-tmux-pane-active "$tmux_pane"; then
+                    return 1
+                else
+                    return 0
+                fi
+            fi
+            return 1
+        fi
+
+        return 0
+    }
+
+    term_id=$(find-current-term-id) \
+        || return 1
+
+    is-in-background "$term_id" \
+          || return 2
+}
