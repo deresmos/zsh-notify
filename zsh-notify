@@ -10,19 +10,19 @@
     # format-time takes a number of seconds as first argument and format it
     # as Xs, XX:XX or XX:XX:XX
     function format-time() {
-      local format t
-      t="$1"
+        local format t
+        t="$1"
 
-      if [[ "$t" -lt 60 ]]; then
-        format="%ss"
-      elif [[ "$t" -lt 3600 ]]; then
-        format="%M:%S"
-      else
-        format="%H:%M:%S"
-      fi
+        if [[ "$t" -lt 60 ]]; then
+            format="%ss"
+        elif [[ "$t" -lt 3600 ]]; then
+            format="%M:%S"
+        else
+            format="%H:%M:%S"
+        fi
 
-      zmodload -e zsh/datetime || zmodload zsh/datetime
-      TZ=UTC strftime "$format" "$t"
+        zmodload -e zsh/datetime || zmodload zsh/datetime
+        TZ=UTC strftime "$format" "$t"
     }
 
     type="$1"
@@ -48,16 +48,16 @@
         zstyle -s ':notify:' "$type"-icon icon
 
         function replace-vars {
-          local text v
+            local text v
 
-          text=$(<&0)
+            text=$(<&0)
 
-          for k in "${(@k)vars}"; do
-            v=$vars[$k]
-            text=$(sed "s/#{$k}/$v/" <<< "$text")
-          done
+            for k in "${(@k)vars}"; do
+              v=$vars[$k]
+              text=$(sed "s/#{$k}/$v/" <<< "$text")
+            done
 
-          echo "$text"
+            echo "$text"
         }
 
         notification_title=$(replace-vars <<< "$notification_title")
@@ -80,9 +80,9 @@
             fi
 
             terminal-notifier ${=app_id_option} \
-              ${=sound_option} \
-              -appIcon "$icon" \
-              -title "$notification_title" <<< "$message" > /dev/null 2>&1
+                ${=sound_option} \
+                -appIcon "$icon" \
+                -title "$notification_title" <<< "$message" > /dev/null 2>&1
 
             if zstyle -t ':notify:' activate-terminal; then
                 osascript <<< "tell app id \"$app_id\" to activate" 1>/dev/null
@@ -93,16 +93,16 @@
             notify-send -i "$icon" "$notification_title" "$message"
 
             function play-sound {
-              if which paplay > /dev/null 2>&1; then
-                paplay "$1"
-              elif which aplay > /dev/null 2>&1; then
-                aplay "$1"
-              elif which ossplay > /dev/null 2>&1; then
-                ossplay "$1"
-              else
-                echo "Could not find a sound file player." >&2
-                return 1
-              fi
+                if which paplay > /dev/null 2>&1; then
+                    paplay "$1"
+                elif which aplay > /dev/null 2>&1; then
+                    aplay "$1"
+                elif which ossplay > /dev/null 2>&1; then
+                    ossplay "$1"
+                else
+                    echo "Could not find a sound file player." >&2
+                    return 1
+                fi
             }
 
             if [[ ! -z "$notification_sound" ]]; then

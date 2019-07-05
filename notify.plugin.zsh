@@ -41,17 +41,17 @@ function notify-command-complete() {
     local now time_elapsed error_log
 
     zstyle -s ':notify:' error-log error_log \
-      || error_log=/dev/stderr
+        || error_log=/dev/stderr
 
     (
       if [[ -n $start_time ]]; then
-        now=`date "+%s"`
-        (( time_elapsed = $now - $start_time ))
-        if [[ $last_status -gt "0" ]]; then
-            notify-error "$time_elapsed" <<< $last_command
-        elif [[ -n $start_time ]]; then
-            notify-success "$time_elapsed" <<< $last_command
-        fi
+          now=`date "+%s"`
+          (( time_elapsed = $now - $start_time ))
+          if [[ $last_status -gt "0" ]]; then
+              notify-error "$time_elapsed" <<< $last_command
+          elif [[ -n $start_time ]]; then
+              notify-success "$time_elapsed" <<< $last_command
+          fi
       fi
     ) | sed 's/^/zsh-notify: /' 1> "$error_log" 2>&1
 

@@ -36,9 +36,9 @@
     # Find the TTY for the current shell.
     function find-current-tty {
         if is-inside-tmux; then
-          tmux display-message -p '#{client_tty}'
+            tmux display-message -p '#{client_tty}'
         else
-          echo $TTY
+            echo $TTY
         fi
     }
 
