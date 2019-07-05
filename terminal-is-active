@@ -1,4 +1,8 @@
 # vim: set nowrap filetype=zsh:
+#
+# terminal-is-active exits with code 0 when the current shell is running on an
+# active terminal window or tab, code 1 when the window or tab is in background
+# and 2 if it's unable to query the terminal state.
 () {
     local term_id
     
@@ -95,7 +99,7 @@
 
     # Detect if the terminal application is in background, also accounting
     # for TMUX if needed, exiting with status 1 if it's active.
-    function is-in-background {
+    function is-active {
         local term_id
 
         term_id=$1
@@ -107,20 +111,20 @@
                 tmux_pane=$(find-tmux-pane)
 
                 if is-tmux-pane-active "$tmux_pane"; then
-                    return 1
-                else
                     return 0
+                else
+                    return 1
                 fi
             fi
-            return 1
+            return 0
         fi
 
-        return 0
+        return 1
     }
 
     term_id=$(find-current-term-id) \
-        || return 1
+        || return 2
 
-    is-in-background "$term_id" \
-          || return 2
+    is-active "$term_id" \
+        || return 1
 }
