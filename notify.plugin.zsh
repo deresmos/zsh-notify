@@ -53,7 +53,7 @@ function notify-command-complete() {
               notify-success "$time_elapsed" <<< $last_command
           fi
       fi
-    ) | sed 's/^/zsh-notify: /' 1> "$error_log" 2>&1
+    )  2>&1 | sed 's/^/zsh-notify: /' > "$error_log"
 
     unset last_command last_status start_time
 }

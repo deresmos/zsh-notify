@@ -63,6 +63,14 @@
         return 1
     }
 
+    function run-applescript() {
+      local script_name="$1"
+
+      shift
+      
+      "$resources_dir"/"$script_name".applescript $@ 2>/dev/null
+    }
+
     # Exit with 0 if the terminal window/tab is active; exit with 1 if not, or
     # if the terminal is
     function is-terminal-window-active {
@@ -77,7 +85,7 @@
                 zstyle -s ':notify:' resources-dir resources_dir
                 current_tty=$(find-current-tty)
 
-                if [[ "true" == $(osascript "$resources_dir"/is-"$term_id"-active.applescript "$current_tty") ]]; then
+                if run-applescript is-"$term_id"-active "$current_tty"; then
                     return 0
                 fi
             ;;
