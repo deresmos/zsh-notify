@@ -15,11 +15,7 @@ else
   return
 fi
 
-if [[ "$WINDOWID" == "" ]]; then
-    if [[ $query_tool == "xdotool" ]]; then
-      zstyle ':notify:*' window-id $(xdotool getactivewindow)
-    fi
-else
+if [[ "$WINDOWID" != "" ]]; then
     zstyle ':notify:*' window-id "$WINDOWID"
 fi
 
@@ -76,8 +72,21 @@ function notify-command-complete() {
 }
 
 function store-command-stats() {
+    local query_tool window_id
+
     last_command="$1"
     start_time=`date "+%s"`
+
+    zstyle -s ':notify:' query-tool query_tool
+    zstyle -s ':notify:' window-id window_id
+
+    # Workaround the lack of $WINDOWID in gnome-terminal and possibly others:
+    # assume the window is _now_ - right after _you_ pressed enter to run the
+    # command - active and store its ID for later use; this will probably not
+    # work well with focus-follow-mouse.
+    if [[ "$window_id" == "" && $query_tool == "xdotool" ]]; then
+        zstyle ':notify:*' window-id "$(xdotool getactivewindow)"
+    fi
 }
 
 autoload add-zsh-hook
