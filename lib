@@ -1,0 +1,28 @@
+# vim: set nowrap filetype=zsh:
+
+# Exit with 0 if inside a TMUX pane
+function is-inside-tmux {
+    [ "$TMUX" != "" ]
+}
+
+# Find the TTY for the current shell, also accounting for TMUX.
+function current-tty {
+    if is-inside-tmux; then
+        tmux display-message -p '#{client_tty}'
+    else
+        echo $TTY
+    fi
+}
+
+# Exit with 0 if given TMUX pane is the active one.
+function is-current-tmux-pane-active {
+    is-inside-tmux || return 1
+
+    local active_pane_id=$(tmux list-windows -F '#{window_active} #{pane_id}' | grep -i '^1' | awk '{ print $2 }')
+
+    if [[ "$TMUX_PANE" == "$active_pane_id" ]]; then
+        return 0
+    fi
+
+    return 1
+}

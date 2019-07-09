@@ -1,0 +1,33 @@
+# vim: set nowrap filetype=zsh:
+#
+# terminal-is-active exits with code 0 when the current shell is running on an
+# active terminal window or tab, code 1 when the window or tab is in background
+# and 2 if it's unable to query the terminal state.
+() {
+    zstyle -s ':notify:' plugin-dir plugin_dir
+    source $plugin_dir/lib
+
+    # Exit with code 0 if the terminal window/tab is active, code 1 if inactive.
+    function is-terminal-window-active {
+        local active_wid wid
+
+        active_wid=$(xdotool getactivewindow)
+
+        zstyle -s ':notify:' window-id wid
+
+        if [[ "$active_wid" == "$wid" ]]; then
+            return 0
+        fi
+
+        return 1
+    }
+
+    if is-terminal-window-active; then
+        if is-inside-tmux; then
+            is-current-tmux-pane-active
+            return $?
+        fi
+      else
+        return $?
+    fi
+}

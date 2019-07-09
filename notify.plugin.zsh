@@ -2,18 +2,23 @@
 # 
 # See README.md.
 
-fpath=($fpath $(dirname $0:A))
-zstyle ':notify:*' resources-dir $(dirname $0:A)/resources
+plugin_dir="$(dirname $0:A)"
 
 if [[ "$TERM_PROGRAM" == 'iTerm.app' ]]; then
-    query_tool=iterm2
+    fpath=($fpath $plugin_dir/mac)
 elif [[ "$TERM_PROGRAM" == 'Apple_Terminal' ]]; then
-    query_tool=apple-terminal
+    fpath=($fpath $plugin_dir/mac)
 elif [[ "$DISPLAY" != '' ]] && which xdotool > /dev/null 2>&1; then
-    query_tool=xdotool
+    fpath=($fpath $plugin_dir/linux)
 else
   return
 fi
+
+fpath=($fpath $plugin_dir)
+
+zstyle ':notify:*' resources-dir "$plugin_dir"/mac/resources
+zstyle ':notify:*' plugin-dir "$plugin_dir"
+unset plugin_dir
 
 if [[ "$WINDOWID" != "" ]]; then
     zstyle ':notify:*' window-id "$WINDOWID"
