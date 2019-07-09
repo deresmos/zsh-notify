@@ -4,10 +4,27 @@
 
 fpath=($fpath $(dirname $0:A))
 zstyle ':notify:*' resources-dir $(dirname $0:A)/resources
-zstyle ':notify:*' window-pid $WINDOWID
 
-test -z "$_ZSH_NOTIFY_ROOT_PPID" && export _ZSH_NOTIFY_ROOT_PPID="$PPID"
-zstyle ':notify:*' parent-pid $_ZSH_NOTIFY_ROOT_PPID
+if [[ "$TERM_PROGRAM" == 'iTerm.app' ]]; then
+    query_tool=iterm2
+elif [[ "$TERM_PROGRAM" == 'Apple_Terminal' ]]; then
+    query_tool=apple-terminal
+elif [[ "$DISPLAY" != '' ]] && which xdotool > /dev/null 2>&1; then
+    query_tool=xdotool
+else
+  return
+fi
+
+if [[ "$WINDOWID" == "" ]]; then
+    if [[ $query_tool == "xdotool" ]]; then
+      zstyle ':notify:*' window-id $(xdotool getactivewindow)
+    fi
+else
+    zstyle ':notify:*' window-id "$WINDOWID"
+fi
+
+zstyle ':notify:*' query-tool $query_tool
+unset query_tool
 
 # Notify of an error with no regard to the time elapsed (but always only
 # when the terminal is in background).

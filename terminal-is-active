@@ -4,37 +4,13 @@
 # active terminal window or tab, code 1 when the window or tab is in background
 # and 2 if it's unable to query the terminal state.
 () {
-    local term_id
-    
-    # Find a "term_id", a string that will be used later to dispatch different
-    # commands to determine whether the terminal application is active or in
-    # background.
-    function find-current-term-id {
-        local resources_dir
-        zstyle -s ':notify:' resources-dir resources_dir
-
-        if [[ "$TERM_PROGRAM" == 'iTerm.app' ]]; then
-            echo iterm2
-        elif [[ "$TERM_PROGRAM" == 'Apple_Terminal' ]]; then
-            echo apple-terminal
-        elif [[ "$DISPLAY" != '' ]] && which xdotool > /dev/null 2>&1; then
-            echo xdotool
-        else
-            return 1
-        fi
-    }
-
     # Exit with 0 if inside a TMUX pane
     function is-inside-tmux {
-        if [[ -z "$TMUX" ]]; then
-            return 1
-        else
-            return 0
-        fi
+        [ "$TMUX" != "" ]
     }
 
-    # Find the TTY for the current shell.
-    function find-current-tty {
+    # Find the TTY for the current shell, also accounting for TMUX.
+    function current-tty {
         if is-inside-tmux; then
             tmux display-message -p '#{client_tty}'
         else
@@ -42,97 +18,65 @@
         fi
     }
 
-    # Get the active TMUX pane ID, comparable with $TMUX_PANE
-    function find-tmux-pane {
-        if is-inside-tmux; then
-            tmux list-windows -F '#{window_active} #{pane_id}' | grep -i '^1' | awk '{ print $2 }'
-        else
-            return 1
-        fi
-    }
-
     # Exit with 0 if given TMUX pane is the active one.
-    function is-tmux-pane-active {
-        local pane
-        pane=$1
+    function is-current-tmux-pane-active {
+        is-inside-tmux || return 1
 
-        if [[ "$TMUX_PANE" == "$pane" ]]; then
+        local active_pane_id=$(tmux list-windows -F '#{window_active} #{pane_id}' | grep -i '^1' | awk '{ print $2 }')
+
+        if [[ "$TMUX_PANE" == "$active_pane_id" ]]; then
             return 0
         fi
 
         return 1
     }
 
+    # Run an AppleScript, selected from ./resources by basename given as the first argument,
+    # with all other arguments are positional arguments to the script's `on run` handle.
     function run-applescript() {
-      local script_name="$1"
+      local script_name resource_dir
 
+      zstyle -s ':notify:' resources-dir resources_dir
+      
+      script_name="$1"
       shift
       
       "$resources_dir"/"$script_name".applescript $@ 2>/dev/null
     }
 
-    # Exit with 0 if the terminal window/tab is active; exit with 1 if not, or
-    # if the terminal is
+    # Exit with code 0 if the terminal window/tab is active, code 1 if inactive.
     function is-terminal-window-active {
-        local term_id
+        local query_tool
 
-        term_id=$1
+        zstyle -s ':notify:' query-tool query_tool
 
-        case "$term_id" in
+        case "$query_tool" in
             "iterm2"|"apple-terminal")
-                local current_tty resources_dir
-
-                zstyle -s ':notify:' resources-dir resources_dir
-                current_tty=$(find-current-tty)
-
-                if run-applescript is-"$term_id"-active "$current_tty"; then
-                    return 0
-                fi
+                run-applescript is-"$query_tool"-active "$(current-tty)" \
+                  && return 0
             ;;
             "xdotool")
                 local active_wid wid
 
                 active_wid=$(xdotool getactivewindow)
 
-                zstyle -s ':notify:' window-pid wid \
-                    || zstyle -s ':notify:' parent-pid wid
+                zstyle -s ':notify:' window-id wid
   
                 if [[ "$active_wid" == "$wid" ]]; then
                     return 0
                 fi
             ;;
         esac
+
         return 1
     }
 
-    # Detect if the terminal application is in background, also accounting
-    # for TMUX if needed, exiting with status 1 if it's active.
-    function is-active {
-        local term_id
-
-        term_id=$1
-
-        if is-terminal-window-active "$term_id"; then
-            if is-inside-tmux; then
-                local tmux_pane
-
-                tmux_pane=$(find-tmux-pane)
-
-                if is-tmux-pane-active "$tmux_pane"; then
-                    return 0
-                else
-                    return 1
-                fi
-            fi
-            return 0
+    if is-terminal-window-active; then
+        if is-inside-tmux; then
+            is-current-tmux-pane-active
+            return $?
         fi
-
-        return 1
-    }
-
-    term_id=$(find-current-term-id) \
-        || return 2
-
-    is-active "$term_id" \
-        || return 1
+      else
+        return $?
+    fi
 }
