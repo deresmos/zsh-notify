@@ -10,27 +10,46 @@ zstyle ':notify:*' window-pid $WINDOWID
 test -z "$_ZSH_NOTIFY_ROOT_PPID" && export _ZSH_NOTIFY_ROOT_PPID="$PPID"
 zstyle ':notify:*' parent-pid $_ZSH_NOTIFY_ROOT_PPID
 
-# Notify an error with no regard to the time elapsed (but always only
-# when the terminal is in background).
+function notify {
+  local _type time_elapsed command_timeout
+
+  _type=$1
+  time_elapsed=$2
+  command_timeout=$3
+
+  if (( $time_elapsed < $command_timeout )); then
+      exit
+  fi
+
+  if [[ "$_type" == 'success' ]]; then
+      notify-if-background success "$time_elapsed" < /dev/stdin &!
+  elif [[ "$_type" == 'error' ]]; then
+      notify-if-background error "$time_elapsed" < /dev/stdin &!
+  fi
+}
+
+# Notify of failed command termination, but only if it took at least
+# 0 seconds (and if the terminal is in background).
 function notify-error {
-    local time_elapsed 
+    local time_elapsed command_error_timeout
+
     time_elapsed=$1
-    notify-if-background error "$time_elapsed" < /dev/stdin &!
+    zstyle -s ':notify:' command-error-timeout command_error_timeout \
+        || command_error_timeout=0
+
+    notify "error" "$time_elapsed" "$command_error_timeout" < /dev/stdin &!
 }
 
 # Notify of successful command termination, but only if it took at least
 # 30 seconds (and if the terminal is in background).
 function notify-success() {
-    local time_elapsed command_complete_timeout
+    local time_elapsed command_success_timeout
 
     time_elapsed=$1
+    zstyle -s ':notify:' command-success-timeout command_success_timeout \
+        || command_success_timeout=30
 
-    zstyle -s ':notify:' command-complete-timeout command_complete_timeout \
-        || command_complete_timeout=30
-
-    if (( $time_elapsed > $command_complete_timeout )); then
-        notify-if-background success "$time_elapsed" < /dev/stdin &!
-    fi
+    notify "success" "$time_elapsed" "$command_success_timeout" < /dev/stdin &!
 }
 
 # Notify about the last command's success or failure.

@@ -63,10 +63,10 @@ Use `zstyle` in your `~/.zshrc`.
 
         zstyle ':notify:*' disable-urgent yes
 
-- Set a different timeout for notifications for successful commands
-  (notifications for failed commands are always posted).
+- Set a different timeout for notifications.
 
-        zstyle ':notify:*' command-complete-timeout 15
+        zstyle ':notify:*' command-success-timeout 15
+        zstyle ':notify:*' command-error-timeout 5
 
 - Replace the built-in notifier with a custom one at `~/bin/my-notifier`. The
   custom notifier will receive the notification type (`error` or `success`) as
