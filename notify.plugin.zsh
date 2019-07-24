@@ -43,7 +43,18 @@ function notify-error {
 # Notify of successful command termination, but only if it took at least
 # 30 seconds (and if the terminal is in background).
 function notify-success() {
-    local time_elapsed command_success_timeout
+    local time_elapsed command_success_timeout ignore_commands
+
+    zstyle -s ':notify:' ignore-success-command ignore_commands \
+        || ignore_commands=''
+
+    # Check ignore command
+    for ignore_command in $ignore_commands; do
+        regex="${ignore_command}*"
+        if [[ "$last_command" =~ $regex ]]; then
+            return
+        fi
+    done
 
     time_elapsed=$1
     zstyle -s ':notify:' command-success-timeout command_success_timeout \
