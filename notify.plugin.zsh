@@ -18,7 +18,7 @@ function notify {
   command_timeout=$3
 
   if (( $time_elapsed < $command_timeout )); then
-      exit
+      return
   fi
 
   if [[ "$_type" == 'success' ]]; then
